@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Upwork Sidekick",
+  "version": "0.1.0",
+  "description": "Scrapes Upwork jobs/profile and assembles structured prompts for external LLMs.",
+  "action": {
+    "default_title": "Open Upwork Sidekick"
+  },
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.upwork.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["sidePanel", "storage", "activeTab", "alarms", "scripting"],
+  "host_permissions": [
+    "https://www.upwork.com/*"
+  ],
+  "icons": {
+    "16": "favicon.svg",
+    "48": "favicon.svg",
+    "128": "favicon.svg"
+  }
+}

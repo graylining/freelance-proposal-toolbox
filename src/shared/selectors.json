@@ -1,0 +1,14 @@
+{
+  "job": {
+    "title": "h1[class*='job-title'], [data-test='job-title']",
+    "description": "[data-test='Description'] .break, [data-test='job-description']",
+    "budget": "[data-test='BudgetAmount'], [data-cy='clock-timelog']",
+    "skills": "[data-test='Skill'], .air3-token",
+    "clientHistory": "[data-qa='client-job-posting-stats']"
+  },
+  "profile": {
+    "title": "[data-qa='job-title']",
+    "skills": "[data-test='skill']",
+    "workHistory": "[data-test='work-history-item']"
+  }
+}
