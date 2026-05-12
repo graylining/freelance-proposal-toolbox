@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import { Dashboard } from './views/Dashboard'
 import { JobDetail } from './views/JobDetail'
 import { PromptOutput } from './views/PromptOutput'
+import { ProfileEditor } from './views/ProfileEditor'
 import { detectPageContext, type PageContext } from '../shared/pageContext'
 
-type View = 'dashboard' | 'job' | 'prompt'
+type View = 'dashboard' | 'profile' | 'job' | 'prompt'
 
 export default function App() {
   const [view, setView] = useState<View>('dashboard')
@@ -40,6 +41,7 @@ export default function App() {
             onOpenJob={() => setView('job')}
           />
         )}
+        {view === 'profile' && <ProfileEditor />}
         {view === 'job' && (
           <JobDetail
             context={context}
@@ -71,6 +73,7 @@ function Header({
 }) {
   const tabs: { id: View; label: string }[] = [
     { id: 'dashboard', label: 'Dashboard' },
+    { id: 'profile', label: 'Profile' },
     { id: 'job', label: 'Job' },
     { id: 'prompt', label: 'Prompt' },
   ]

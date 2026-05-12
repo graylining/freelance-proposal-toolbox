@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import type { PageContext } from '../../shared/pageContext'
 import type { SavedJob } from '../../shared/types'
+import type { ScrapedProfile } from '../../shared/profileTypes'
 import { STORAGE_KEYS } from '../../shared/constants'
 
 export function Dashboard({
@@ -12,18 +13,26 @@ export function Dashboard({
 }) {
   const [autoScrape, setAutoScrape] = useState(false)
   const [jobs, setJobs] = useState<SavedJob[]>([])
+  const [profile, setProfile] = useState<ScrapedProfile | null>(null)
   const [profileSyncedAt, setProfileSyncedAt] = useState<number | null>(null)
+  const [syncing, setSyncing] = useState(false)
+  const [syncError, setSyncError] = useState<string | null>(null)
 
   useEffect(() => {
     chrome.storage.local
       .get([
         STORAGE_KEYS.autoScrape,
         STORAGE_KEYS.savedJobs,
+        STORAGE_KEYS.profile,
         STORAGE_KEYS.profileSyncedAt,
       ])
       .then((data) => {
         setAutoScrape(Boolean(data[STORAGE_KEYS.autoScrape]))
         setJobs((data[STORAGE_KEYS.savedJobs] as SavedJob[] | undefined) ?? [])
+        setProfile(
+          (data[STORAGE_KEYS.profile] as ScrapedProfile | null | undefined) ??
+            null,
+        )
         setProfileSyncedAt(
           (data[STORAGE_KEYS.profileSyncedAt] as number | null | undefined) ??
             null,
@@ -36,6 +45,25 @@ export function Dashboard({
     setAutoScrape(next)
     await chrome.storage.local.set({ [STORAGE_KEYS.autoScrape]: next })
     chrome.runtime.sendMessage({ type: 'AUTO_SCRAPE_TOGGLE', enabled: next })
+  }
+
+  const syncProfile = async () => {
+    if (context.kind !== 'profile') return
+    setSyncing(true)
+    setSyncError(null)
+    try {
+      const res = await chrome.runtime.sendMessage({
+        type: 'SYNC_PROFILE',
+        tabId: context.tabId,
+      })
+      if (!res?.ok) throw new Error(res?.error ?? 'Sync failed')
+      setProfile(res.profile as ScrapedProfile)
+      setProfileSyncedAt(res.syncedAt as number)
+    } catch (e) {
+      setSyncError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSyncing(false)
+    }
   }
 
   return (
@@ -55,20 +83,37 @@ export function Dashboard({
       </Card>
 
       <Card>
-        <div className="flex items-center justify-between">
-          <div>
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-neutral-100">Profile Sync</p>
-            <p className="text-xs text-neutral-400">
+            <p className="mt-0.5 text-xs text-neutral-400">
               {profileSyncedAt
                 ? `Last synced ${new Date(profileSyncedAt).toLocaleString()}`
                 : 'Never synced'}
             </p>
+            {profile?.name && (
+              <p className="mt-2 truncate text-xs text-neutral-300">
+                <span className="text-neutral-500">Stored:</span> {profile.name}
+                {profile.headline ? ` — ${profile.headline}` : ''}
+              </p>
+            )}
+            {syncError && (
+              <p className="mt-2 rounded-md border border-red-500/30 bg-red-500/10 p-2 text-[11px] text-red-300">
+                {syncError}
+              </p>
+            )}
           </div>
           <button
-            disabled={context.kind !== 'profile'}
-            className="rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+            onClick={syncProfile}
+            disabled={context.kind !== 'profile' || syncing}
+            className="shrink-0 rounded-md bg-neutral-100 px-3 py-1.5 text-xs font-medium text-neutral-900 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+            title={
+              context.kind !== 'profile'
+                ? 'Open an Upwork freelancer profile page first'
+                : 'Scrape this profile and POST to /profiles'
+            }
           >
-            Sync Profile
+            {syncing ? 'Syncing…' : 'Sync Profile'}
           </button>
         </div>
       </Card>
