@@ -57,6 +57,7 @@ export type ScrapedJobPage = {
   workload: string | null
   rateMin: string | null
   rateMax: string | null
+  fixedBudget: string | null
   duration: string | null
   experienceLevel: string | null
   projectType: string | null

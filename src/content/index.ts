@@ -54,10 +54,11 @@ function scrapeJob(): ScrapedJobPage {
     title: scrapeJobTitle(),
     description: scrapeJobDescription(),
     postedAgo: scrapePostedAgo(),
-    jobType: scrapeSiblingText('[data-cy="clock-hourly"], [data-cy="clock-fixed"]', '.description'),
-    workload: scrapeSiblingText('[data-cy="clock-hourly"], [data-cy="clock-fixed"]', 'strong'),
+    jobType: scrapeJobType(),
+    workload: scrapeSiblingText('[data-cy="clock-hourly"]', 'strong'),
     rateMin: scrapeRateAt(0),
     rateMax: scrapeRateAt(1),
+    fixedBudget: scrapeFixedBudget(),
     duration: scrapeDuration(),
     experienceLevel: scrapeSiblingText('[data-cy="expertise"]', 'strong'),
     projectType: scrapeSegmentation('Project Type'),
@@ -98,6 +99,22 @@ function scrapePostedAgo(): string | null {
     /^Posted\b/i.test(clean(n.textContent ?? '')),
   )
   return textOf(el)
+}
+
+function scrapeJobType(): string | null {
+  if (document.querySelector('[data-cy="fixed-price"]')) return 'Fixed-price'
+  if (document.querySelector('[data-cy="clock-hourly"]')) return 'Hourly'
+  return scrapeSiblingText('[data-cy="clock-hourly"], [data-cy="fixed-price"]', '.description')
+}
+
+function scrapeFixedBudget(): string | null {
+  const icon = document.querySelector('[data-cy="fixed-price"]')
+  const li = icon?.closest('li') ?? icon?.parentElement ?? null
+  if (!li) return null
+  const strong = Array.from(li.querySelectorAll('strong'))
+    .map((s) => clean(s.textContent ?? ''))
+    .find((t) => /^\$[\d.,]+/.test(t))
+  return strong ?? null
 }
 
 function scrapeRateAt(index: 0 | 1): string | null {
