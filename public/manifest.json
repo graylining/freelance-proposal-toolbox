@@ -20,10 +20,9 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["sidePanel", "storage", "activeTab", "alarms", "scripting"],
+  "permissions": ["sidePanel", "storage", "activeTab", "scripting", "unlimitedStorage"],
   "host_permissions": [
-    "https://www.upwork.com/*",
-    "http://localhost:3737/*"
+    "https://www.upwork.com/*"
   ],
   "icons": {
     "16": "favicon.svg",

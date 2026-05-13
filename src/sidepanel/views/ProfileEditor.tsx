@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { ScrapedProfile } from '../../shared/profileTypes'
 import { STORAGE_KEYS } from '../../shared/constants'
-import { API_BASE } from '../../shared/api'
 
 const TEXT_FIELDS: Array<{
   key: keyof ScrapedProfile
@@ -61,19 +60,14 @@ export function ProfileEditor() {
     setStatus(null)
     try {
       const patch = draftToPatch(draft)
-      const res = await fetch(`${API_BASE}/profiles/${encodeURIComponent(profile.upworkId)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(patch),
-      })
-      if (!res.ok) throw new Error(`API ${res.status}: ${await res.text()}`)
-      const json = (await res.json()) as { profile: ScrapedProfile; syncedAt: number }
-      setProfile(json.profile)
-      setDraft(initialDraft(json.profile))
+      const merged: ScrapedProfile = { ...profile, ...patch }
+      const syncedAt = Date.now()
       await chrome.storage.local.set({
-        [STORAGE_KEYS.profile]: json.profile,
-        [STORAGE_KEYS.profileSyncedAt]: json.syncedAt,
+        [STORAGE_KEYS.profile]: merged,
+        [STORAGE_KEYS.profileSyncedAt]: syncedAt,
       })
+      setProfile(merged)
+      setDraft(initialDraft(merged))
       setStatus({ kind: 'ok', msg: 'Saved' })
     } catch (e) {
       setStatus({ kind: 'err', msg: e instanceof Error ? e.message : String(e) })

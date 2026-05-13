@@ -3,9 +3,10 @@ import { Dashboard } from './views/Dashboard'
 import { JobDetail } from './views/JobDetail'
 import { PromptOutput } from './views/PromptOutput'
 import { ProfileEditor } from './views/ProfileEditor'
+import { Filters } from './views/Filters'
 import { detectPageContext, type PageContext } from '../shared/pageContext'
 
-type View = 'dashboard' | 'profile' | 'job' | 'prompt'
+type View = 'dashboard' | 'profile' | 'filters' | 'job' | 'prompt'
 
 export default function App() {
   const [view, setView] = useState<View>('dashboard')
@@ -42,6 +43,7 @@ export default function App() {
           />
         )}
         {view === 'profile' && <ProfileEditor />}
+        {view === 'filters' && <Filters />}
         {view === 'job' && (
           <JobDetail
             context={context}
@@ -74,6 +76,7 @@ function Header({
   const tabs: { id: View; label: string }[] = [
     { id: 'dashboard', label: 'Dashboard' },
     { id: 'profile', label: 'Profile' },
+    { id: 'filters', label: 'Filters' },
     { id: 'job', label: 'Job' },
     { id: 'prompt', label: 'Prompt' },
   ]
@@ -95,20 +98,22 @@ function Header({
           {context.kind}
         </span>
       </div>
-      <nav className="mt-3 flex gap-1">
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            onClick={() => onNavigate(t.id)}
-            className={`flex-1 rounded-md px-2 py-1.5 text-xs font-medium transition ${
-              view === t.id
-                ? 'bg-neutral-100 text-neutral-900'
-                : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+      <nav className="-mx-4 mt-3 overflow-x-auto px-4 scrollbar-thin">
+        <div className="flex w-max gap-1">
+          {tabs.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => onNavigate(t.id)}
+              className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition ${
+                view === t.id
+                  ? 'bg-neutral-100 text-neutral-900'
+                  : 'text-neutral-400 hover:bg-neutral-800 hover:text-neutral-100'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
       </nav>
     </header>
   )

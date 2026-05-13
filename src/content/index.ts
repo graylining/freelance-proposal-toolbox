@@ -1,15 +1,6 @@
-import selectors from '../shared/selectors.json'
 import type { ClientFeedback, ScrapedProfile } from '../shared/profileTypes'
 import { fetchPortfolioProjects } from './portfolio'
-
-type ScrapedJob = {
-  url: string
-  title: string
-  description: string
-  budget: string | null
-  skills: string[]
-  clientHistory: string | null
-}
+import type { ScrapedJobPage } from '../shared/jobTypes'
 
 const CHROME_PATTERNS: RegExp[] = [
   /^edit\b/i,
@@ -39,7 +30,7 @@ const CHROME_PATTERNS: RegExp[] = [
 
 chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   if (msg?.type === 'SCRAPE_JOB_REQUEST') {
-    waitForElement(selectors.job.title)
+    waitForElement('h4, [data-test="Description"]')
       .then(() => sendResponse(scrapeJob()))
       .catch(() => sendResponse(scrapeJob()))
     return true
@@ -54,14 +45,156 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   return false
 })
 
-function scrapeJob(): ScrapedJob {
+function scrapeJob(): ScrapedJobPage {
+  const cipherId = extractJobCipher(location.pathname)
+
   return {
-    url: location.href,
-    title: text(selectors.job.title),
-    description: text(selectors.job.description),
-    budget: optional(selectors.job.budget),
-    skills: all(selectors.job.skills),
-    clientHistory: optional(selectors.job.clientHistory),
+    cipherId,
+    jobUrl: location.href,
+    title: scrapeJobTitle(),
+    description: scrapeJobDescription(),
+    postedAgo: scrapePostedAgo(),
+    jobType: scrapeSiblingText('[data-cy="clock-hourly"], [data-cy="clock-fixed"]', '.description'),
+    workload: scrapeSiblingText('[data-cy="clock-hourly"], [data-cy="clock-fixed"]', 'strong'),
+    rateMin: scrapeRateAt(0),
+    rateMax: scrapeRateAt(1),
+    duration: scrapeDuration(),
+    experienceLevel: scrapeSiblingText('[data-cy="expertise"]', 'strong'),
+    projectType: scrapeSegmentation('Project Type'),
+    englishLevel: scrapeEnglishLevel(),
+    skillsMandatory: scrapeSkillsForGroup('Mandatory skills'),
+    skillsNiceToHave: scrapeSkillsForGroup('Nice-to-have skills'),
+    questions: scrapeQuestions(),
+    client: scrapeClient(),
+    scrapedAt: Date.now(),
+  }
+}
+
+function extractJobCipher(pathname: string): string | null {
+  const m = pathname.match(/\/jobs\/(~[a-z0-9]+)/i)
+  return m ? m[1] : null
+}
+
+function scrapeJobTitle(): string | null {
+  const wrapper = document.querySelector('[job-uid]')?.closest('h4')
+  if (wrapper) {
+    const span = wrapper.querySelector('.text-base.flex-1, span:first-child')
+    const t = textOf(span ?? wrapper)
+    if (t) return t
+  }
+  const h4 = document.querySelector('h4 .text-base.flex-1, h4 .text-base')
+  return textOf(h4) ?? textOf(document.querySelector('h4'))
+}
+
+function scrapeJobDescription(): string | null {
+  const root = document.querySelector('[data-test="Description"]')
+  if (!root) return null
+  const para = root.querySelector('.multiline-text, .text-body-sm')
+  return textOf(para) ?? clean(stripButtons(root))
+}
+
+function scrapePostedAgo(): string | null {
+  const el = Array.from(document.querySelectorAll('.posted-on-line *, [class*="posted"]')).find((n) =>
+    /^Posted\b/i.test(clean(n.textContent ?? '')),
+  )
+  return textOf(el)
+}
+
+function scrapeRateAt(index: 0 | 1): string | null {
+  // The clock-timelog div is a sibling of the rate container; walk up to the <li>.
+  const icon = document.querySelector('[data-cy="clock-timelog"]')
+  const li = icon?.closest('li') ?? icon?.parentElement ?? null
+  if (!li) return null
+  const amounts = Array.from(li.querySelectorAll('strong'))
+    .map((s) => clean(s.textContent ?? ''))
+    .filter((t) => /^\$[\d.,]+/.test(t))
+  return amounts[index] ?? null
+}
+
+function scrapeSiblingText(iconSelector: string, valueSelector: string): string | null {
+  const icon = document.querySelector(iconSelector)
+  const li = icon?.closest('li') ?? icon?.parentElement ?? null
+  if (!li) return null
+  const v = li.querySelector(valueSelector)
+  return textOf(v)
+}
+
+function scrapeDuration(): string | null {
+  const icon = document.querySelector('[data-cy="duration4"], [data-cy^="duration"]')
+  const li = icon?.closest('li') ?? icon?.parentElement ?? null
+  if (!li) return null
+  const strong = li.querySelector('strong')
+  if (!strong) return null
+  // Prefer the desktop label if both desktop/mobile spans are present
+  const desktop = strong.querySelector('span:first-child')
+  return textOf(desktop) ?? textOf(strong)
+}
+
+function scrapeSegmentation(label: string): string | null {
+  for (const li of document.querySelectorAll('.segmentations li')) {
+    const strong = li.querySelector('strong')
+    if (strong && clean(strong.textContent ?? '').replace(/:$/, '') === label) {
+      const span = li.querySelector('span')
+      return textOf(span)
+    }
+  }
+  return null
+}
+
+function scrapeEnglishLevel(): string | null {
+  const li = document.querySelector('[data-cy="english"]')
+  if (!li) return null
+  const span = li.querySelector('span')
+  return textOf(span)
+}
+
+function scrapeSkillsForGroup(label: string): string[] {
+  for (const group of document.querySelectorAll('.span-md-12')) {
+    const strong = group.querySelector(':scope > strong')
+    if (strong && clean(strong.textContent ?? '') === label) {
+      const list = group.querySelector('.skills-list')
+      if (list) {
+        return Array.from(list.querySelectorAll('a'))
+          .map((a) => clean(a.textContent ?? ''))
+          .filter(Boolean)
+      }
+    }
+  }
+  return []
+}
+
+function scrapeQuestions(): string[] {
+  for (const ol of document.querySelectorAll('ol.list-styled')) {
+    const items = Array.from(ol.querySelectorAll('li'))
+      .map((li) => clean(li.textContent ?? ''))
+      .filter(Boolean)
+    if (items.length) return items
+  }
+  return []
+}
+
+function scrapeClientStats(): string | null {
+  const li = document.querySelector('[data-qa="client-job-posting-stats"]')
+  if (!li) return null
+  const strong = textOf(li.querySelector('strong'))
+  const div = textOf(li.querySelector('div'))
+  return [strong, div].filter(Boolean).join(' — ') || null
+}
+
+function scrapeClient(): ScrapedJobPage['client'] {
+  const container = document.querySelector('[data-test="about-client-container"]')
+  const text = container ? container.textContent ?? '' : ''
+  return {
+    paymentVerified: /Payment method verified/i.test(text),
+    phoneVerified: /Phone number verified/i.test(text),
+    country: textOf(document.querySelector('[data-qa="client-location"] strong')),
+    city: textOf(
+      document.querySelector('[data-qa="client-location"] .nowrap:first-of-type'),
+    ),
+    industry: textOf(document.querySelector('[data-qa="client-company-profile-industry"]')),
+    companySize: textOf(document.querySelector('[data-qa="client-company-profile-size"]')),
+    jobPostingStats: scrapeClientStats(),
+    memberSince: textOf(document.querySelector('[data-qa="client-contract-date"]')),
   }
 }
 
@@ -313,21 +446,6 @@ function textOf(el: Element | null | undefined): string | null {
 }
 
 function allText(selector: string): string[] {
-  return Array.from(document.querySelectorAll(selector))
-    .map((el) => clean(el.textContent ?? ''))
-    .filter(Boolean)
-}
-
-function text(selector: string): string {
-  return clean(document.querySelector(selector)?.textContent ?? '')
-}
-
-function optional(selector: string): string | null {
-  const value = text(selector)
-  return value === '' ? null : value
-}
-
-function all(selector: string): string[] {
   return Array.from(document.querySelectorAll(selector))
     .map((el) => clean(el.textContent ?? ''))
     .filter(Boolean)

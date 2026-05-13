@@ -1,10 +1,9 @@
 export const STORAGE_KEYS = {
-  autoScrape: 'autoScrapeEnabled',
   savedJobs: 'savedJobs',
   profile: 'profile',
   profileSyncedAt: 'profileSyncedAt',
-  lastScrapedPage: 'lastScrapedPageIndex',
+  jobFilters: 'jobFilters',
+  promptOptions: 'promptOptions',
 } as const
 
-export const ALARM_NAME = 'auto-scrape-tick'
-export const AUTO_SCRAPE_COOLDOWN_MIN = 7
+export const MAX_SAVED_JOBS = 500
