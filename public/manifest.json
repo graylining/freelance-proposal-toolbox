@@ -4,7 +4,12 @@
   "version": "0.1.0",
   "description": "Scrapes Upwork jobs/profile and assembles structured prompts for external LLMs.",
   "action": {
-    "default_title": "Open Upwork Sidekick"
+    "default_title": "Open Upwork Sidekick",
+    "default_icon": {
+      "16": "icon-16.png",
+      "32": "icon-32.png",
+      "48": "icon-48.png"
+    }
   },
   "side_panel": {
     "default_path": "sidepanel.html"
@@ -25,8 +30,8 @@
     "https://www.upwork.com/*"
   ],
   "icons": {
-    "16": "favicon.svg",
-    "48": "favicon.svg",
-    "128": "favicon.svg"
+    "16": "icon-16.png",
+    "48": "icon-48.png",
+    "128": "icon-128.png"
   }
 }

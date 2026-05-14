@@ -240,7 +240,7 @@ export function Filters() {
             type="checkbox"
             checked={draft.paymentVerified}
             onChange={(e) => update('paymentVerified', e.target.checked)}
-            className="size-3.5 accent-emerald-500"
+            className="size-3.5 accent-upwork-500"
           />
           Payment verified only
         </label>
@@ -263,7 +263,7 @@ export function Filters() {
         {status && (
           <span
             className={`text-[11px] ${
-              status.kind === 'ok' ? 'text-emerald-400' : 'text-red-300'
+              status.kind === 'ok' ? 'text-upwork-400' : 'text-red-300'
             }`}
           >
             {status.msg}
@@ -280,7 +280,7 @@ export function Filters() {
           <button
             onClick={save}
             disabled={!dirty}
-            className="rounded-md bg-emerald-500 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-emerald-400 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+            className="rounded-md bg-upwork-500 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-upwork-400 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
           >
             Save
           </button>
@@ -337,7 +337,7 @@ function ChipGroup<T extends string>({
               onClick={() => onToggle(o.value)}
               className={`rounded-full border px-2.5 py-1 text-[11px] font-medium transition ${
                 on
-                  ? 'border-emerald-500/50 bg-emerald-500/15 text-emerald-300'
+                  ? 'border-upwork-500/50 bg-upwork-500/15 text-upwork-300'
                   : 'border-neutral-700 bg-neutral-900 text-neutral-400 hover:border-neutral-600 hover:text-neutral-200'
               }`}
             >

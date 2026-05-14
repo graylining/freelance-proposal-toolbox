@@ -142,7 +142,7 @@ export function JobDetail({
           <button
             disabled={busy}
             onClick={scanJob}
-            className="w-full rounded-md bg-emerald-500 px-3 py-2 text-sm font-medium text-neutral-900 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
+            className="w-full rounded-md bg-upwork-500 px-3 py-2 text-sm font-medium text-neutral-900 transition hover:bg-upwork-400 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {busy ? 'Scanning…' : 'Scan Job'}
           </button>
@@ -187,7 +187,7 @@ export function JobDetail({
               {scraped.skillsMandatory.map((s) => (
                 <span
                   key={s}
-                  className="rounded bg-emerald-500/15 px-1.5 py-0.5 text-[10px] text-emerald-300"
+                  className="rounded bg-upwork-500/15 px-1.5 py-0.5 text-[10px] text-upwork-300"
                 >
                   {s}
                 </span>
@@ -239,7 +239,7 @@ function ToggleRow({
         type="checkbox"
         checked={checked}
         onChange={(e) => onChange(e.target.checked)}
-        className="mt-0.5 size-3.5 accent-emerald-500"
+        className="mt-0.5 size-3.5 accent-upwork-500"
       />
       <span className="flex-1">
         <span className="block text-xs font-medium text-neutral-100">{label}</span>
