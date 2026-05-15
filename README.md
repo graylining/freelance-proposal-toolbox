@@ -1,4 +1,4 @@
-# Upwork Sidekick
+# Freelance Proposal Toolbox
 
 A Chrome side-panel extension that scrapes your Freelance platform profile + a specific job page of your choosing, then assembles a structured, human-sounding prompt you can paste into Claude / DeepSeek / KIMI / any LLM to draft a proposal worth submitting.
 
