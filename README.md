@@ -1,6 +1,6 @@
 # Upwork Sidekick
 
-A Chrome side-panel extension that scrapes your Upwork profile + a specific job page, then assembles a structured, human-sounding prompt you can paste into Claude / ChatGPT / any LLM to draft a proposal worth submitting.
+A Chrome side-panel extension that scrapes your Freelance platform profile + a specific job page of your choosing, then assembles a structured, human-sounding prompt you can paste into Claude / DeepSeek / KIMI / any LLM to draft a proposal worth submitting.
 
 No backend. No accounts. Everything runs locally and saves to `chrome.storage.local`.
 
@@ -8,11 +8,24 @@ No backend. No accounts. Everything runs locally and saves to `chrome.storage.lo
 
 ## What it does
 
+> Note: The extension currently only supports Upwork platform.
+
 - **Sync your Upwork profile** once (Dashboard → Sync Profile). Scrapes your headline, hourly rate, skills, employment history, portfolio (via Upwork's GraphQL), and client feedback. Saved locally and editable in the Profile tab.
 - **Set search filters** (Filters tab) — composes the Upwork search URL with hourly/fixed, contractor tier, budget brackets, project length, client-history bands, location, etc. Click "Open in Upwork" to launch the filtered search in a real tab.
 - **Scan a job page** — open any Upwork job at `/jobs/~cipher` and hit Scan Job. The extension pulls the title, description, budget (hourly range or fixed price), screening questions, client stats, and skills.
 - **Generate a copy-paste-ready prompt** — combines your saved profile + the scraped job into a single prompt with strict format and voice rules (no AI tells, no em dashes, no banned filler words, "you-first" copywriting, 7-beat cover-letter structure). Produces **two distinct proposal variations** plus pricing, milestone dates, effort-vs-pay verdict, rate-increase schedule, success probability, and strategic advice mined from client signals.
 - **Custom prompt + agency mode toggles** in the Job tab — persistent text areas for extra instructions and agency framing.
+
+### The Prompt Output Includes
+
+- selects 2 variations out of several proposal/cover letters strategies which follow best practices and tips from several successful freelancers
+- Judgement on client's emotional state based on the job description and several other factors which  often show bad previous experiences
+- if the proposal requires you to submit a loom video, the output will include a transcript you can read while making the video.
+- hourly pricing sugesstions between a client's acceptable range, or milestones based break down if it is a fixed price job
+- project to price ratio assessment to determine if client will probably scope-creep or will act like a good person
+- rate increase schedule for hourly jobs
+- your success probabilty of getting the job, based on your profile and other factors
+- strategic advice on how to approach the job/client
 
 ## Install (dev)
 
@@ -87,7 +100,3 @@ All state lives in `chrome.storage.local`:
 
 - The portfolio scrape uses a GraphQL endpoint that needs the elevated bearer token from `localStorage.<nid>_api_token` and the `current_organization_uid` cookie. Both are read from the active Upwork tab by the content script. If you're not logged in, sync fails with a clear error.
 - The per-job scrape is pure DOM, no auth.
-
-## Project layout
-
-This folder (`freelance-cold-start/`) is the extension only. There is a legacy `api/` sibling folder that was an Express + SQLite backend; it is no longer used. The extension has been migrated entirely to `chrome.storage.local` and the `api/` directory can be deleted at any time.

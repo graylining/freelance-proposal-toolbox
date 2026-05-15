@@ -8,6 +8,9 @@ export function About() {
         <p className="mt-0.5 text-[11px] text-neutral-500">
           v{manifest.version} · {manifest.description}
         </p>
+        <p className="mt-0.5 text-[11px] text-neutral-500">
+          Note: Currently we only support Upwork platform, but we are planning on adding other platform support soon.
+        </p>
       </Card>
 
       <Card title="How it works">
@@ -28,7 +31,7 @@ export function About() {
           </li>
           <li>
             <span className="font-medium text-neutral-100">4. Copy the prompt</span> from
-            the Prompt tab. Paste into Claude / ChatGPT / any LLM. You'll get two distinct
+            the Prompt tab. Paste into Claude / DeepSeek / Kimi / any LLM. You'll get two distinct
             proposal variations plus pricing, milestone dates, effort-vs-pay verdict, and
             strategic advice.
           </li>

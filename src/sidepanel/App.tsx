@@ -169,7 +169,7 @@ function Header({ view, onNavigate }: { view: View; onNavigate: (v: View) => voi
     <header className="border-b border-neutral-800 bg-neutral-900/80 px-4 py-3 backdrop-blur">
       <div className="flex items-center justify-between">
         <h1 className="text-sm font-semibold tracking-tight text-neutral-100">
-          Upwork Sidekick
+          Freelance Proposal Sidekick
         </h1>
         <button
           onClick={() => onNavigate('about')}
