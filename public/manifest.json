@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Freelance Proposal Sidekick",
+  "name": "Freelance Proposal Toolbox",
   "version": "0.1.0",
   "description": "Scrapes Upwork jobs/profile and assembles structured prompts for external LLMs.",
   "action": {
-    "default_title": "Open Freelance Proposal Sidekick",
+    "default_title": "Open Freelance Proposal Toolbox",
     "default_icon": {
       "16": "icon-16.png",
       "32": "icon-32.png",
