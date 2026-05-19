@@ -7,6 +7,7 @@ export const STORAGE_KEYS = {
   theme: 'theme',
   manualProfile: 'manualProfile',
   profileInputMode: 'profileInputMode',
+  bookmarks: 'bookmarks',
 } as const
 
 export type Theme = 'dark' | 'light'

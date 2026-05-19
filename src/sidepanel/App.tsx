@@ -4,12 +4,13 @@ import { JobDetail } from './views/JobDetail'
 import { PromptOutput } from './views/PromptOutput'
 import { ProfileEditor } from './views/ProfileEditor'
 import { Filters } from './views/Filters'
+import { Bookmarks } from './views/Bookmarks'
 import { About } from './views/About'
 import { Settings } from './views/Settings'
 import { detectPageContext, type PageContext } from '../shared/pageContext'
 import { DEFAULT_THEME, STORAGE_KEYS, type Theme } from '../shared/constants'
 
-type View = 'dashboard' | 'profile' | 'filters' | 'job' | 'prompt' | 'settings' | 'about'
+type View = 'dashboard' | 'profile' | 'filters' | 'bookmarks' | 'job' | 'prompt' | 'settings' | 'about'
 
 export default function App() {
   const [view, setView] = useState<View>('dashboard')
@@ -71,6 +72,7 @@ export default function App() {
         )}
         {view === 'profile' && <ProfileEditor context={context} />}
         {view === 'filters' && <Filters />}
+        {view === 'bookmarks' && <Bookmarks />}
         {view === 'job' && (
           <JobDetail
             context={context}
@@ -96,7 +98,7 @@ export default function App() {
 const TABS: { id: View; label: string }[] = [
   { id: 'dashboard', label: 'Dashboard' },
   { id: 'profile', label: 'Profile' },
-  { id: 'filters', label: 'Filters' },
+  { id: 'bookmarks', label: 'Bookmarks' },
   { id: 'job', label: 'Job' },
   { id: 'prompt', label: 'Prompt' },
   { id: 'settings', label: 'Settings' },
