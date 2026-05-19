@@ -31,6 +31,11 @@ const LIST_FIELDS: Array<{ key: keyof ScrapedProfile; label: string }> = [
 ]
 
 export function ProfileEditor({ context }: { context: PageContext }) {
+  const [inputMode, setInputMode] = useState<'upwork' | 'manual'>('upwork')
+  const [manualText, setManualText] = useState('')
+  const [manualSaved, setManualSaved] = useState('')
+  const [manualSaving, setManualSaving] = useState(false)
+
   const [profile, setProfile] = useState<ScrapedProfile | null>(null)
   const [profileSyncedAt, setProfileSyncedAt] = useState<number | null>(null)
   const [draft, setDraft] = useState<Record<string, string>>({})
@@ -41,7 +46,12 @@ export function ProfileEditor({ context }: { context: PageContext }) {
 
   useEffect(() => {
     chrome.storage.local
-      .get([STORAGE_KEYS.profile, STORAGE_KEYS.profileSyncedAt])
+      .get([
+        STORAGE_KEYS.profile,
+        STORAGE_KEYS.profileSyncedAt,
+        STORAGE_KEYS.profileInputMode,
+        STORAGE_KEYS.manualProfile,
+      ])
       .then((data) => {
         const p = data[STORAGE_KEYS.profile] as ScrapedProfile | undefined
         if (p) {
@@ -51,8 +61,30 @@ export function ProfileEditor({ context }: { context: PageContext }) {
         setProfileSyncedAt(
           (data[STORAGE_KEYS.profileSyncedAt] as number | null | undefined) ?? null,
         )
+        const mode = data[STORAGE_KEYS.profileInputMode] as 'upwork' | 'manual' | undefined
+        if (mode) setInputMode(mode)
+        const manual = data[STORAGE_KEYS.manualProfile] as string | undefined
+        if (manual) {
+          setManualText(manual)
+          setManualSaved(manual)
+        }
       })
   }, [])
+
+  const switchMode = async (m: 'upwork' | 'manual') => {
+    setInputMode(m)
+    await chrome.storage.local.set({ [STORAGE_KEYS.profileInputMode]: m })
+  }
+
+  const saveManual = async () => {
+    setManualSaving(true)
+    try {
+      await chrome.storage.local.set({ [STORAGE_KEYS.manualProfile]: manualText })
+      setManualSaved(manualText)
+    } finally {
+      setManualSaving(false)
+    }
+  }
 
   const dirty = useMemo(
     () => profile && JSON.stringify(initialDraft(profile)) !== JSON.stringify(draft),
@@ -110,176 +142,240 @@ export function ProfileEditor({ context }: { context: PageContext }) {
 
   return (
     <div className="space-y-4 pb-16">
-      <section className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-neutral-100">Profile Sync</p>
-            <p className="mt-0.5 text-xs text-neutral-400">
-              {profileSyncedAt
-                ? `Last synced ${new Date(profileSyncedAt).toLocaleString()}`
-                : 'Never synced'}
-            </p>
-            {profile?.name && (
-              <p className="mt-2 truncate text-xs text-neutral-300">
-                <span className="text-neutral-500">Stored:</span> {profile.name}
-                {profile.headline ? ` — ${profile.headline}` : ''}
-              </p>
-            )}
-            {syncError && (
-              <p className="mt-2 rounded-md border border-red-500/30 bg-red-500/10 p-2 text-[11px] text-red-300">
-                {syncError}
-              </p>
-            )}
-          </div>
-          <button
-            onClick={syncProfile}
-            disabled={context.kind !== 'profile' || syncing}
-            className="shrink-0 rounded-md bg-upwork-500 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-upwork-400 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-            title={
-              context.kind !== 'profile'
-                ? 'Open an Upwork freelancer profile page first'
-                : 'Scrape this profile and save it locally'
-            }
-          >
-            {syncing ? 'Syncing…' : 'Sync Profile'}
-          </button>
-        </div>
-      </section>
+      <div className="flex rounded-lg border border-neutral-800 bg-neutral-950 p-0.5">
+        <button
+          onClick={() => switchMode('upwork')}
+          className={`flex-1 rounded py-1.5 text-[11px] font-medium transition ${
+            inputMode === 'upwork'
+              ? 'bg-neutral-800 text-neutral-100'
+              : 'text-neutral-500 hover:text-neutral-300'
+          }`}
+        >
+          Upwork Profile
+        </button>
+        <button
+          onClick={() => switchMode('manual')}
+          className={`flex-1 rounded py-1.5 text-[11px] font-medium transition ${
+            inputMode === 'manual'
+              ? 'bg-neutral-800 text-neutral-100'
+              : 'text-neutral-500 hover:text-neutral-300'
+          }`}
+        >
+          Paste Profile
+        </button>
+      </div>
 
-      {!profile ? (
-        <div className="rounded-lg border border-dashed border-neutral-800 p-6 text-center">
-          <p className="text-sm font-medium text-neutral-200">No profile saved yet</p>
-          <p className="mt-1 text-xs text-neutral-500">
-            Open your Upwork profile and click Sync Profile above.
+      {inputMode === 'manual' ? (
+        <section className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+            Profile text
           </p>
-        </div>
-      ) : (
-        <>
-          <header className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-neutral-100">
-                {profile.name ?? '(unnamed)'}
-              </p>
-              <p className="truncate text-[11px] text-neutral-500">
-                {profile.upworkId} · personId {profile.personId ?? '—'}
-              </p>
-            </div>
-          </header>
-
-          <Section title="Basics">
-            {TEXT_FIELDS.map((f) => (
-              <Field
-                key={f.key as string}
-                label={f.label}
-                value={draft[f.key as string] ?? ''}
-                onChange={(v) => setDraft({ ...draft, [f.key as string]: v })}
-                multiline={f.multiline}
-              />
-            ))}
-          </Section>
-
-          <Section title="Lists (one per line)">
-            {LIST_FIELDS.map((f) => (
-              <Field
-                key={f.key as string}
-                label={f.label}
-                value={draft[f.key as string] ?? ''}
-                onChange={(v) => setDraft({ ...draft, [f.key as string]: v })}
-                multiline
-                rows={Math.min(8, Math.max(3, (draft[f.key as string] ?? '').split('\n').length))}
-              />
-            ))}
-          </Section>
-
-          <Section title={`Client Feedback (${profile.clientFeedback?.length ?? 0})`}>
-            {(profile.clientFeedback ?? []).length === 0 ? (
-              <Empty>No client feedback captured.</Empty>
+          <p className="mb-2 text-[11px] text-neutral-500">
+            Paste your bio, resume summary, or any description of your background. Works with any
+            platform — not just Upwork.
+          </p>
+          <textarea
+            value={manualText}
+            onChange={(e) => setManualText(e.target.value)}
+            rows={12}
+            placeholder="Paste your profile here — skills, experience, past projects, rates, languages, anything relevant. The more detail you include, the better the proposal will be."
+            className="w-full resize-y rounded-md border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
+          />
+          <div className="mt-2 flex items-center justify-between">
+            {manualText === manualSaved && manualSaved ? (
+              <span className="text-[10px] text-upwork-400">Saved</span>
             ) : (
-              <ul className="space-y-2">
-                {profile.clientFeedback.map((f, i) => (
-                  <li key={i} className="rounded-md border border-neutral-800 bg-neutral-900 p-2">
-                    <p className="text-xs font-medium text-neutral-100">{f.jobTitle}</p>
-                    <p className="mt-0.5 text-[10px] text-neutral-500">
-                      {f.rating ? `★ ${f.rating}` : ''} {f.period ? `· ${f.period}` : ''}
-                    </p>
-                    {f.feedback && (
-                      <p className="mt-1 text-[11px] leading-snug text-neutral-300">{f.feedback}</p>
-                    )}
-                    {f.freelancerResponse && (
-                      <p className="mt-1 border-l-2 border-upwork-500/40 pl-2 text-[11px] italic text-neutral-400">
-                        {f.freelancerResponse}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
-          <Section title={`Portfolio (${profile.portfolioProjects?.length ?? 0})`}>
-            {profile.portfolioFetchError && (
-              <p className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">
-                {profile.portfolioFetchError}
-              </p>
-            )}
-            {(profile.portfolioProjects ?? []).length === 0 ? (
-              <Empty>No portfolio projects.</Empty>
-            ) : (
-              <ul className="space-y-2">
-                {profile.portfolioProjects.map((p) => (
-                  <li key={p.id} className="rounded-md border border-neutral-800 bg-neutral-900 p-2">
-                    <p className="text-xs font-medium text-neutral-100">{p.title ?? '(untitled)'}</p>
-                    {p.role && <p className="text-[10px] text-neutral-500">{p.role}</p>}
-                    {p.description && (
-                      <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-neutral-300">
-                        {p.description}
-                      </p>
-                    )}
-                    {p.skills.length > 0 && (
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {p.skills.map((s) => (
-                          <span
-                            key={s}
-                            className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400"
-                          >
-                            {s}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </Section>
-
-          <div className="sticky bottom-0 -mx-4 -mb-4 flex items-center justify-between gap-2 border-t border-neutral-800 bg-neutral-950/95 px-4 py-3 backdrop-blur">
-            {status && (
-              <span
-                className={`text-[11px] ${
-                  status.kind === 'ok' ? 'text-upwork-400' : 'text-red-300'
-                }`}
-              >
-                {status.msg}
+              <span className="text-[10px] text-neutral-600">
+                {manualText !== manualSaved ? 'Unsaved changes' : ''}
               </span>
             )}
-            <div className="ml-auto flex gap-2">
+            <button
+              onClick={saveManual}
+              disabled={manualSaving || !manualText.trim() || manualText === manualSaved}
+              className="rounded-md bg-upwork-500 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-upwork-400 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+            >
+              {manualSaving ? 'Saving…' : 'Save Profile Text'}
+            </button>
+          </div>
+        </section>
+      ) : (
+        <>
+          <section className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-neutral-100">Profile Sync</p>
+                <p className="mt-0.5 text-xs text-neutral-400">
+                  {profileSyncedAt
+                    ? `Last synced ${new Date(profileSyncedAt).toLocaleString()}`
+                    : 'Never synced'}
+                </p>
+                {profile?.name && (
+                  <p className="mt-2 truncate text-xs text-neutral-300">
+                    <span className="text-neutral-500">Stored:</span> {profile.name}
+                    {profile.headline ? ` — ${profile.headline}` : ''}
+                  </p>
+                )}
+                {syncError && (
+                  <p className="mt-2 rounded-md border border-red-500/30 bg-red-500/10 p-2 text-[11px] text-red-300">
+                    {syncError}
+                  </p>
+                )}
+              </div>
               <button
-                onClick={reset}
-                disabled={!dirty || saving}
-                className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+                onClick={syncProfile}
+                disabled={context.kind !== 'profile' || syncing}
+                className="shrink-0 rounded-md bg-upwork-500 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-upwork-400 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                title={
+                  context.kind !== 'profile'
+                    ? 'Open an Upwork freelancer profile page first'
+                    : 'Scrape this profile and save it locally'
+                }
               >
-                Reset
-              </button>
-              <button
-                onClick={save}
-                disabled={!dirty || saving}
-                className="rounded-md bg-upwork-500 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-upwork-400 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
-              >
-                {saving ? 'Saving…' : 'Save'}
+                {syncing ? 'Syncing…' : 'Sync Profile'}
               </button>
             </div>
-          </div>
+          </section>
+
+          {!profile ? (
+            <div className="rounded-lg border border-dashed border-neutral-800 p-6 text-center">
+              <p className="text-sm font-medium text-neutral-200">No profile saved yet</p>
+              <p className="mt-1 text-xs text-neutral-500">
+                Open your Upwork profile and click Sync Profile above.
+              </p>
+            </div>
+          ) : (
+            <>
+              <header className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-neutral-100">
+                    {profile.name ?? '(unnamed)'}
+                  </p>
+                  <p className="truncate text-[11px] text-neutral-500">
+                    {profile.upworkId} · personId {profile.personId ?? '—'}
+                  </p>
+                </div>
+              </header>
+
+              <Section title="Basics">
+                {TEXT_FIELDS.map((f) => (
+                  <Field
+                    key={f.key as string}
+                    label={f.label}
+                    value={draft[f.key as string] ?? ''}
+                    onChange={(v) => setDraft({ ...draft, [f.key as string]: v })}
+                    multiline={f.multiline}
+                  />
+                ))}
+              </Section>
+
+              <Section title="Lists (one per line)">
+                {LIST_FIELDS.map((f) => (
+                  <Field
+                    key={f.key as string}
+                    label={f.label}
+                    value={draft[f.key as string] ?? ''}
+                    onChange={(v) => setDraft({ ...draft, [f.key as string]: v })}
+                    multiline
+                    rows={Math.min(8, Math.max(3, (draft[f.key as string] ?? '').split('\n').length))}
+                  />
+                ))}
+              </Section>
+
+              <Section title={`Client Feedback (${profile.clientFeedback?.length ?? 0})`}>
+                {(profile.clientFeedback ?? []).length === 0 ? (
+                  <Empty>No client feedback captured.</Empty>
+                ) : (
+                  <ul className="space-y-2">
+                    {profile.clientFeedback.map((f, i) => (
+                      <li key={i} className="rounded-md border border-neutral-800 bg-neutral-900 p-2">
+                        <p className="text-xs font-medium text-neutral-100">{f.jobTitle}</p>
+                        <p className="mt-0.5 text-[10px] text-neutral-500">
+                          {f.rating ? `★ ${f.rating}` : ''} {f.period ? `· ${f.period}` : ''}
+                        </p>
+                        {f.feedback && (
+                          <p className="mt-1 text-[11px] leading-snug text-neutral-300">
+                            {f.feedback}
+                          </p>
+                        )}
+                        {f.freelancerResponse && (
+                          <p className="mt-1 border-l-2 border-upwork-500/40 pl-2 text-[11px] italic text-neutral-400">
+                            {f.freelancerResponse}
+                          </p>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Section>
+
+              <Section title={`Portfolio (${profile.portfolioProjects?.length ?? 0})`}>
+                {profile.portfolioFetchError && (
+                  <p className="mb-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2 text-[11px] text-amber-300">
+                    {profile.portfolioFetchError}
+                  </p>
+                )}
+                {(profile.portfolioProjects ?? []).length === 0 ? (
+                  <Empty>No portfolio projects.</Empty>
+                ) : (
+                  <ul className="space-y-2">
+                    {profile.portfolioProjects.map((p) => (
+                      <li key={p.id} className="rounded-md border border-neutral-800 bg-neutral-900 p-2">
+                        <p className="text-xs font-medium text-neutral-100">
+                          {p.title ?? '(untitled)'}
+                        </p>
+                        {p.role && <p className="text-[10px] text-neutral-500">{p.role}</p>}
+                        {p.description && (
+                          <p className="mt-1 line-clamp-3 text-[11px] leading-snug text-neutral-300">
+                            {p.description}
+                          </p>
+                        )}
+                        {p.skills.length > 0 && (
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {p.skills.map((s) => (
+                              <span
+                                key={s}
+                                className="rounded bg-neutral-800 px-1.5 py-0.5 text-[10px] text-neutral-400"
+                              >
+                                {s}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </Section>
+
+              <div className="sticky bottom-0 -mx-4 -mb-4 flex items-center justify-between gap-2 border-t border-neutral-800 bg-neutral-950/95 px-4 py-3 backdrop-blur">
+                {status && (
+                  <span
+                    className={`text-[11px] ${
+                      status.kind === 'ok' ? 'text-upwork-400' : 'text-red-300'
+                    }`}
+                  >
+                    {status.msg}
+                  </span>
+                )}
+                <div className="ml-auto flex gap-2">
+                  <button
+                    onClick={reset}
+                    disabled={!dirty || saving}
+                    className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs font-medium text-neutral-300 hover:bg-neutral-800 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    Reset
+                  </button>
+                  <button
+                    onClick={save}
+                    disabled={!dirty || saving}
+                    className="rounded-md bg-upwork-500 px-3 py-1.5 text-xs font-medium text-neutral-900 hover:bg-upwork-400 disabled:cursor-not-allowed disabled:bg-neutral-700 disabled:text-neutral-400"
+                  >
+                    {saving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            </>
+          )}
         </>
       )}
     </div>

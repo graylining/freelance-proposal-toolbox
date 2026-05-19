@@ -5,6 +5,8 @@ export const STORAGE_KEYS = {
   jobFilters: 'jobFilters',
   promptOptions: 'promptOptions',
   theme: 'theme',
+  manualProfile: 'manualProfile',
+  profileInputMode: 'profileInputMode',
 } as const
 
 export type Theme = 'dark' | 'light'

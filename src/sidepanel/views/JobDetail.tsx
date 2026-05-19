@@ -17,6 +17,8 @@ export function JobDetail({
   context: PageContext
   onPromptReady: (prompt: string) => void
 }) {
+  const [jobInputMode, setJobInputMode] = useState<'scan' | 'paste'>('scan')
+  const [pastedJob, setPastedJob] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [scraped, setScraped] = useState<ScrapedJobPage | null>(null)
@@ -38,6 +40,20 @@ export function JobDetail({
     chrome.storage.local.set({ [STORAGE_KEYS.promptOptions]: next })
   }
 
+  const getActiveProfile = async (): Promise<unknown> => {
+    const data = await chrome.storage.local.get([
+      STORAGE_KEYS.profile,
+      STORAGE_KEYS.manualProfile,
+      STORAGE_KEYS.profileInputMode,
+    ])
+    const mode = data[STORAGE_KEYS.profileInputMode] as string | undefined
+    if (mode === 'manual') {
+      const text = data[STORAGE_KEYS.manualProfile] as string | undefined
+      return text?.trim() ? { rawText: text } : null
+    }
+    return (data[STORAGE_KEYS.profile] as unknown) ?? null
+  }
+
   const scanJob = async () => {
     if (context.kind !== 'job') return
     setBusy(true)
@@ -51,11 +67,52 @@ export function JobDetail({
       const job = res.data as ScrapedJobPage
       setScraped(job)
       await saveJob(job)
+      const profile = await getActiveProfile()
+      onPromptReady(buildPrompt(profile, job, options))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusy(false)
+    }
+  }
 
-      const profile = (
-        await chrome.storage.local.get(STORAGE_KEYS.profile)
-      )[STORAGE_KEYS.profile] as unknown
-      onPromptReady(buildPrompt(profile ?? null, job, options))
+  const generateFromPaste = async () => {
+    if (!pastedJob.trim()) return
+    setBusy(true)
+    setError(null)
+    try {
+      const job: ScrapedJobPage = {
+        cipherId: null,
+        jobUrl: '',
+        title: null,
+        description: pastedJob.trim(),
+        postedAgo: null,
+        jobType: null,
+        workload: null,
+        rateMin: null,
+        rateMax: null,
+        fixedBudget: null,
+        duration: null,
+        experienceLevel: null,
+        projectType: null,
+        englishLevel: null,
+        skillsMandatory: [],
+        skillsNiceToHave: [],
+        questions: [],
+        client: {
+          paymentVerified: false,
+          phoneVerified: false,
+          country: null,
+          city: null,
+          industry: null,
+          companySize: null,
+          jobPostingStats: null,
+          memberSince: null,
+        },
+        scrapedAt: Date.now(),
+      }
+      const profile = await getActiveProfile()
+      onPromptReady(buildPrompt(profile, job, options))
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -131,31 +188,86 @@ export function JobDetail({
         </div>
       </div>
 
-      {onJobPage ? (
+      <div className="flex rounded-lg border border-neutral-800 bg-neutral-950 p-0.5">
+        <button
+          onClick={() => setJobInputMode('scan')}
+          className={`flex-1 rounded py-1.5 text-[11px] font-medium transition ${
+            jobInputMode === 'scan'
+              ? 'bg-neutral-800 text-neutral-100'
+              : 'text-neutral-500 hover:text-neutral-300'
+          }`}
+        >
+          Scan Page
+        </button>
+        <button
+          onClick={() => setJobInputMode('paste')}
+          className={`flex-1 rounded py-1.5 text-[11px] font-medium transition ${
+            jobInputMode === 'paste'
+              ? 'bg-neutral-800 text-neutral-100'
+              : 'text-neutral-500 hover:text-neutral-300'
+          }`}
+        >
+          Paste Job
+        </button>
+      </div>
+
+      {jobInputMode === 'scan' ? (
         <>
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
-            <p className="text-[10px] uppercase tracking-wider text-neutral-500">
-              Detected job
-            </p>
-            <p className="mt-1 break-all text-xs text-neutral-300">{context.url}</p>
-          </div>
-          <button
-            disabled={busy}
-            onClick={scanJob}
-            className="w-full rounded-md bg-upwork-500 px-3 py-2 text-sm font-medium text-neutral-900 transition hover:bg-upwork-400 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {busy ? 'Scanning…' : 'Scan Job'}
-          </button>
+          {onJobPage ? (
+            <>
+              <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+                <p className="text-[10px] uppercase tracking-wider text-neutral-500">
+                  Detected job
+                </p>
+                <p className="mt-1 break-all text-xs text-neutral-300">{context.url}</p>
+              </div>
+              <button
+                disabled={busy}
+                onClick={scanJob}
+                className="w-full rounded-md bg-upwork-500 px-3 py-2 text-sm font-medium text-neutral-900 transition hover:bg-upwork-400 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {busy ? 'Scanning…' : 'Scan Job'}
+              </button>
+            </>
+          ) : (
+            <div className="rounded-lg border border-dashed border-neutral-800 p-4 text-center">
+              <p className="text-xs font-medium text-neutral-300">No job page detected</p>
+              <p className="mt-1 text-[11px] text-neutral-500">
+                Open an Upwork job posting to enable Scan Job, or switch to{' '}
+                <button
+                  onClick={() => setJobInputMode('paste')}
+                  className="text-upwork-400 underline-offset-2 hover:underline"
+                >
+                  Paste Job
+                </button>{' '}
+                to paste a description from any platform.
+              </p>
+            </div>
+          )}
         </>
       ) : (
-        <div className="rounded-lg border border-dashed border-neutral-800 p-4 text-center">
-          <p className="text-xs font-medium text-neutral-300">
-            No job page detected
+        <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3">
+          <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-neutral-400">
+            Job description
           </p>
-          <p className="mt-1 text-[11px] text-neutral-500">
-            Open an Upwork job posting (e.g.{' '}
-            <code className="text-neutral-400">/jobs/~cipher</code>) to enable Scan Job.
+          <p className="mb-2 text-[11px] text-neutral-500">
+            Paste the full job posting from any platform — Upwork, Freelancer, Toptal, LinkedIn, or
+            anywhere else.
           </p>
+          <textarea
+            value={pastedJob}
+            onChange={(e) => setPastedJob(e.target.value)}
+            rows={10}
+            placeholder="Paste the job description here. Include the title, requirements, budget, and any screening questions if present."
+            className="w-full resize-y rounded-md border border-neutral-800 bg-neutral-950 px-2 py-1.5 text-xs text-neutral-100 placeholder-neutral-600 focus:border-neutral-600 focus:outline-none"
+          />
+          <button
+            disabled={busy || !pastedJob.trim()}
+            onClick={generateFromPaste}
+            className="mt-2 w-full rounded-md bg-upwork-500 px-3 py-2 text-sm font-medium text-neutral-900 transition hover:bg-upwork-400 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {busy ? 'Generating…' : 'Generate Prompt'}
+          </button>
         </div>
       )}
 
@@ -165,16 +277,12 @@ export function JobDetail({
         </p>
       )}
 
-      {scraped && (
+      {scraped && jobInputMode === 'scan' && (
         <div className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3 text-xs">
-          <p className="text-[10px] uppercase tracking-wider text-neutral-500">
-            Last scrape
-          </p>
+          <p className="text-[10px] uppercase tracking-wider text-neutral-500">Last scrape</p>
           <p className="mt-1 font-medium text-neutral-100">{scraped.title ?? '(no title)'}</p>
           <p className="mt-0.5 text-[10px] text-neutral-500">
-            {[scraped.jobType, scraped.workload, scraped.duration]
-              .filter(Boolean)
-              .join(' · ')}
+            {[scraped.jobType, scraped.workload, scraped.duration].filter(Boolean).join(' · ')}
           </p>
           {(scraped.rateMin || scraped.rateMax) && (
             <p className="mt-0.5 text-[11px] text-neutral-300">

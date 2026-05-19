@@ -21,7 +21,14 @@ export function buildPrompt(
   job: unknown,
   options: PromptOptions = DEFAULT_PROMPT_OPTIONS,
 ): string {
-  const profileJson = JSON.stringify(compactProfile(profile))
+  const compactedProfile = compactProfile(profile)
+  const profileBlock: string[] =
+    typeof compactedProfile === 'string'
+      ? [
+          'PROFILE (free-form — treat as the freelancer\'s full background description, no structured fields):',
+          compactedProfile,
+        ]
+      : ['PROFILE:', JSON.stringify(compactedProfile)]
   const jobJson = JSON.stringify(compactJob(job))
   const questions = extractQuestions(job)
   const today = new Date().toISOString().slice(0, 10)
@@ -313,8 +320,7 @@ export function buildPrompt(
     'SCREENING QUESTIONS (echo verbatim in Q lines):',
     Qs,
     '',
-    'PROFILE:',
-    profileJson,
+    ...profileBlock,
     '',
     'JOB:',
     jobJson,
@@ -328,9 +334,10 @@ function extractQuestions(job: unknown): string[] {
   return q.filter((x): x is string => typeof x === 'string' && x.trim().length > 0)
 }
 
-function compactProfile(p: unknown): Record<string, unknown> | null {
+function compactProfile(p: unknown): Record<string, unknown> | string | null {
   if (!p || typeof p !== 'object') return null
   const o = p as Record<string, unknown>
+  if (typeof o.rawText === 'string' && o.rawText.trim()) return o.rawText.trim()
   return omitEmpty({
     name: o.name,
     headline: o.headline,
