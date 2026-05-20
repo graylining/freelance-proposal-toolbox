@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
-  "name": "Freelance Proposal Toolbox",
-  "version": "0.1.0",
+  "name": "Freelance Proposal Toolbox DEV",
+  "version": "0.1.1",
   "description": "Scrapes Upwork jobs/profile and assembles structured prompts for external LLMs.",
   "action": {
-    "default_title": "Open Freelance Proposal Toolbox",
+    "default_title": "Open Freelance Proposal Toolbox DEV",
     "default_icon": {
       "16": "icon-16.png",
       "32": "icon-32.png",
@@ -25,7 +25,7 @@
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["sidePanel", "storage", "activeTab", "scripting", "unlimitedStorage"],
+  "permissions": ["sidePanel", "storage", "activeTab", "tabs", "scripting", "unlimitedStorage"],
   "host_permissions": [
     "https://www.upwork.com/*"
   ],

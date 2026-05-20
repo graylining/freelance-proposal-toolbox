@@ -1,14 +1,12 @@
 import { useEffect, useState } from 'react'
 import type { PageContext } from '../../shared/pageContext'
-import type { ScrapedJobPage } from '../../shared/jobTypes'
+import type { SavedJob, ScrapedJobPage } from '../../shared/jobTypes'
 import {
   buildPrompt,
   DEFAULT_PROMPT_OPTIONS,
   type PromptOptions,
 } from '../../shared/prompt'
 import { MAX_SAVED_JOBS, STORAGE_KEYS } from '../../shared/constants'
-
-type SavedJob = ScrapedJobPage & { savedAt: number }
 
 export function JobDetail({
   context,
@@ -322,9 +320,15 @@ async function saveJob(job: ScrapedJobPage) {
   const existing = stored ?? []
   const matchKey = (j: SavedJob) =>
     j.cipherId ? j.cipherId === job.cipherId : j.jobUrl === job.jobUrl
+  const prev = existing.find(matchKey)
   const filtered = existing.filter((j) => !matchKey(j))
   const next: SavedJob[] = [
-    { ...job, savedAt: Date.now() },
+    {
+      ...job,
+      savedAt: Date.now(),
+      status: prev?.status,
+      notes: prev?.notes,
+    },
     ...filtered,
   ].slice(0, MAX_SAVED_JOBS)
   await chrome.storage.local.set({ [key]: next })

@@ -47,6 +47,14 @@ export type JobDetails = {
   rawCapturedAt: number
 }
 
+export type JobStatus = 'drafted' | 'submitted' | 'in-talks' | 'won' | 'passed'
+
+export type SavedJob = ScrapedJobPage & {
+  savedAt: number
+  status?: JobStatus
+  notes?: string
+}
+
 export type ScrapedJobPage = {
   cipherId: string | null
   jobUrl: string
